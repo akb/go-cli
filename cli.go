@@ -20,10 +20,8 @@ type Command interface {
 	// where the Command may define flags to be automatically parsed
 	Flags(*flag.FlagSet)
 
-	// Command is the method that actually performs the command. It is passed the
-	// same flag.FlagSet that was passed to Flags. This allows the command to
-	// access the parsed arguments as well as any flags.
-	Command(context.Context, *flag.FlagSet) int
+	// Command is the method that actually performs the command.
+	Command(context.Context) int
 
 	// Subcommands should return nil, or a pointer to a CLI if the command has
 	// subcommands
@@ -89,5 +87,5 @@ func Main(name string, mainCmd Command) int {
 		fmt.Fprintf(os.Stderr, "Failed to parse command-line arguments:\n%s\n", err)
 		os.Exit(1)
 	}
-	return cmd.Command(ctx, f)
+	return cmd.Command(ctx)
 }
