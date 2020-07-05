@@ -25,7 +25,7 @@ type Command interface {
 
 	// Subcommands should return nil, or a pointer to a CLI if the command has
 	// subcommands
-	Subcommands() *CLI
+	Subcommands() CLI
 }
 
 // CLI is a map of names to Command implementations. It is used to represent a
@@ -69,7 +69,7 @@ func Main(name string, mainCmd Command) int {
 		if subcommands == nil {
 			break
 		}
-		c, ok := (*subcommands)[head]
+		c, ok := subcommands[head]
 		if !ok {
 			cmd.Help()
 			return 1
