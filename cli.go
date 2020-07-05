@@ -46,11 +46,6 @@ func Main(name string, mainCmd Command) int {
 	traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 	ctx = context.WithValue(ctx, "trace-id", traceID)
 
-	if mainCmd.Subcommands() != nil && len(os.Args) < 2 {
-		mainCmd.Help()
-		return 1
-	}
-
 	head := os.Args[0]
 	tail := os.Args[1:]
 	arg := head
