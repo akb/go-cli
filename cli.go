@@ -46,6 +46,17 @@ func Main(name string, mainCmd Command) int {
 	traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 	ctx = context.WithValue(ctx, "trace-id", traceID)
 
+	if mainCmd.Subcommands() != nil && len(os.Args) < 2 {
+		f := flag.NewFlagSet(name, flag.ExitOnError)
+		f.Usage = mainCmd.Help
+		mainCmd.Flags(f)
+		if status := mainCmd.Command(ctx); status != 0 {
+			mainCmd.Help()
+			return status
+		}
+		return 0
+	}
+
 	head := os.Args[0]
 	tail := os.Args[1:]
 	arg := head
@@ -80,7 +91,13 @@ func Main(name string, mainCmd Command) int {
 	err := f.Parse(params)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse command-line arguments:\n%s\n", err)
-		os.Exit(1)
+		return 1
 	}
-	return cmd.Command(ctx)
+
+	if status := cmd.Command(ctx); status != 0 {
+		cmd.Help()
+		return status
+	}
+
+	return 0
 }
