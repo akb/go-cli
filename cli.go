@@ -95,7 +95,6 @@ func Main(name string, mainCmd Command) int {
 	}
 
 	if status := cmd.Command(ctx); status != 0 {
-		cmd.Help()
 		return status
 	}
 
