@@ -57,8 +57,7 @@ func Main(mainCmd Command) int {
 		} else if subcommands == nil {
 			args = append(args, head)
 		} else {
-			c, ok := subcommands[head]
-			if ok {
+			if c, ok := subcommands[head]; ok {
 				cmd = c
 
 				if len(name) == 0 {
@@ -66,7 +65,7 @@ func Main(mainCmd Command) int {
 				} else {
 					name = strings.Join([]string{name, head}, " ")
 				}
-			} else {
+			} else if head != os.Args[0] {
 				args = append(args, head)
 			}
 		}
