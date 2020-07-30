@@ -28,7 +28,7 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context) int {
+func (c *testMainCommand) Command(ctx context.Context, args []string) int {
 	c.commandDidRun = true
 	return 0
 }
@@ -50,7 +50,7 @@ func (s *testSubcommand) Flags(f *flag.FlagSet) {
 	s.flagsDidRun = true
 }
 
-func (s *testSubcommand) Command(ctx context.Context) int {
+func (s *testSubcommand) Command(ctx context.Context, args []string) int {
 	s.commandDidRun = true
 	return 0
 }
@@ -66,7 +66,7 @@ func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main("testmain", cmd)
+	result := Main(cmd)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -111,7 +111,7 @@ func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main("testmain", cmd)
+	result := Main(cmd)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")

@@ -41,43 +41,41 @@ type CLI map[string]Command
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
 func Main(mainCmd Command) int {
-	var cmd Command
+	var cmd Command = mainCmd
 	var name string
 	var flags []string
-	var positional []string
+	var args []string
 	var head string
-	var args []string = os.Args
+	var tail []string = os.Args
 	for {
-		head = args[0]
-		args = args[1:]
+		head = tail[0]
+
+		subcommands := cmd.Subcommands()
 
 		if head[0] == '-' {
 			flags = append(flags, head)
-			continue
-		}
-
-		subcommands := cmd.Subcommands()
-		if subcommands == nil {
-			positional = append(positional, head)
-			continue
-		}
-
-		c, ok := subcommands[head]
-		if !ok {
-			positional = append(positional, head)
-			continue
-		}
-
-		if len(name) == 0 {
-			name = head
+		} else if subcommands == nil {
+			args = append(args, head)
 		} else {
-			name = strings.Join([]string{name, head}, " ")
+			c, ok := subcommands[head]
+			if ok {
+				cmd = c
+
+				if len(name) == 0 {
+					name = head
+				} else {
+					name = strings.Join([]string{name, head}, " ")
+				}
+			} else {
+				args = append(args, head)
+			}
 		}
 
-		cmd = c
-
-		if len(args) == 0 {
+		if len(tail) == 1 {
 			break
+		} else {
+			tail = tail[1:]
+			continue
 		}
 	}
 
@@ -96,7 +94,7 @@ func Main(mainCmd Command) int {
 	traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 	ctx = context.WithValue(ctx, "trace-id", traceID)
 
-	if status := cmd.Command(ctx, positional); status != 0 {
+	if status := cmd.Command(ctx, args); status != 0 {
 		return status
 	}
 
