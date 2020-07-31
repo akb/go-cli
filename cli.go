@@ -17,12 +17,14 @@ type Command interface {
 	// also be manually called in the `Command` method if appropriate.
 	Help()
 
+	// Command is the method that actually performs the command.
+	Command(context.Context, []string) int
+}
+
+type HasFlags interface {
 	// Flags is called before `Command` and is passed a pointer to a flag.FlagSet
 	// where the Command may define flags to be automatically parsed
 	Flags(*flag.FlagSet)
-
-	// Command is the method that actually performs the command.
-	Command(context.Context, []string) int
 }
 
 type HasSubcommands interface {
@@ -44,10 +46,8 @@ type CLI map[string]Command
 // which should be returned to the underlying OS
 func Main(mainCmd Command) int {
 	var cmd Command = mainCmd
-	var name string
-	var flags []string
-	var args []string
-	var head string
+	var args, flags []string
+	var head, name string
 	var tail []string = os.Args
 	for {
 		head = tail[0]
@@ -83,13 +83,14 @@ func Main(mainCmd Command) int {
 		}
 	}
 
-	f := flag.NewFlagSet(name, flag.ExitOnError)
-	f.Usage = cmd.Help
-	cmd.Flags(f)
-	err := f.Parse(flags)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse command-line arguments:\n%s\n", err)
-		return 1
+	if b, ok := (interface{})(cmd).(HasFlags); ok {
+		f := flag.NewFlagSet(name, flag.ExitOnError)
+		f.Usage = cmd.Help
+		b.Flags(f)
+		if err := f.Parse(flags); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse command-line arguments:\n%s\n", err)
+			return 1
+		}
 	}
 
 	ctx := context.Background()
