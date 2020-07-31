@@ -23,7 +23,9 @@ type Command interface {
 
 	// Command is the method that actually performs the command.
 	Command(context.Context, []string) int
+}
 
+type branch interface {
 	// Subcommands should return nil, or a pointer to a CLI if the command has
 	// subcommands
 	Subcommands() CLI
@@ -50,7 +52,10 @@ func Main(mainCmd Command) int {
 	for {
 		head = tail[0]
 
-		subcommands := cmd.Subcommands()
+		var subcommands CLI
+		if b, ok := (interface{})(cmd).(branch); ok {
+			subcommands = b.Subcommands()
+		}
 
 		if head[0] == '-' {
 			flags = append(flags, head)
