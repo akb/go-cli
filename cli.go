@@ -25,7 +25,7 @@ type Command interface {
 	Command(context.Context, []string) int
 }
 
-type branch interface {
+type HasSubcommands interface {
 	// Subcommands should return nil, or a pointer to a CLI if the command has
 	// subcommands
 	Subcommands() CLI
@@ -53,7 +53,7 @@ func Main(mainCmd Command) int {
 		head = tail[0]
 
 		var subcommands CLI
-		if b, ok := (interface{})(cmd).(branch); ok {
+		if b, ok := (interface{})(cmd).(HasSubcommands); ok {
 			subcommands = b.Subcommands()
 		}
 

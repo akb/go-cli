@@ -56,7 +56,10 @@ func ExpectError(t *testing.T, stdout, stderr bytes.Buffer, err error) {
 }
 
 func ExpectHelp(t *testing.T, stderr bytes.Buffer, cmd Command) {
-	subcommands := cmd.Subcommands()
+	var subcommands CLI
+	if b, ok := (interface{})(cmd).(HasSubcommands); ok {
+		subcommands = b.Subcommands()
+	}
 
 	for subcommand, _ := range subcommands {
 		matched, err := regexp.Match(subcommand, stderr.Bytes())
