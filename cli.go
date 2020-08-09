@@ -33,9 +33,35 @@ type HasSubcommands interface {
 	Subcommands() CLI
 }
 
+type NoOpCommand struct{}
+
+func (NoOpCommand) Help() {}
+
+func (NoOpCommand) Command(c context.Context, args []string) int {
+	return 0
+}
+
 // CLI is a map of names to Command implementations. It is used to represent a
 // set of subcommands for a given Command
 type CLI map[string]Command
+
+func (c CLI) ListSubcommands(prefix string) []string {
+	var subcommands []string
+	for k, v := range c {
+		if len(prefix) > 0 {
+			k = fmt.Sprintf("%s %s", prefix, k)
+		}
+
+		subcommands = append(subcommands, k)
+
+		if sc, ok := v.(HasSubcommands); ok {
+			for _, sck := range sc.Subcommands().ListSubcommands(k) {
+				subcommands = append(subcommands, sck)
+			}
+		}
+	}
+	return subcommands
+}
 
 // Main should be called from a CLI application's `main` function. It should be
 // passed the Command that represents the root of the subcommand tree. Main
