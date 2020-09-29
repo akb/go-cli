@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 	"testing"
 )
@@ -66,7 +67,7 @@ func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd, os.Stdin, os.Stdout)
+	result := Main(cmd, os.Stdin, os.Stdout, log.New(os.Stderr, "", log.LstdFlags))
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -111,7 +112,7 @@ func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd, os.Stdin, os.Stdout)
+	result := Main(cmd, os.Stdin, os.Stdout, log.New(os.Stderr, "", log.LstdFlags))
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")

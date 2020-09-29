@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -78,8 +79,9 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // provides an IO interface for the command to use that can be easily attached
 // to STDIN/STDOUT or to bytes.Buffer for testing
 type System struct {
-	In  io.Reader
-	Out io.Writer
+	In     io.Reader
+	Out    io.Writer
+	Logger *log.Logger
 }
 
 func (s System) Print(a ...interface{}) (int, error) {
@@ -106,6 +108,26 @@ func (s System) Scanln(a ...interface{}) (int, error) {
 	return fmt.Fscanln(s.In, a...)
 }
 
+func (s System) Log(a ...interface{}) {
+	s.Logger.Println(a...)
+}
+
+func (s System) Logf(format string, a ...interface{}) {
+	s.Logger.Printf(format, a...)
+}
+
+func (s System) Fatal(v ...interface{}) {
+	s.Logger.Fatal(v...)
+}
+
+func (s System) Fatalf(format string, v ...interface{}) {
+	s.Logger.Fatalf(format, v...)
+}
+
+func (s System) Fatalln(v ...interface{}) {
+	s.Logger.Fatalln(v...)
+}
+
 // Main should be called from a CLI application's `main` function. It should be
 // passed the Command that represents the root of the subcommand tree. Main
 // will parse the command line, determine which subcommand is the intended
@@ -113,7 +135,7 @@ func (s System) Scanln(a ...interface{}) (int, error) {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command, in io.Reader, out io.Writer) int {
+func Main(mainCmd Command, in io.Reader, out io.Writer, logger *log.Logger) int {
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
@@ -169,7 +191,7 @@ func Main(mainCmd Command, in io.Reader, out io.Writer) int {
 		traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 		ctx = context.WithValue(ctx, "trace-id", traceID)
 
-		if status := b.Command(ctx, args, System{in, out}); status != 0 {
+		if status := b.Command(ctx, args, System{in, out, logger}); status != 0 {
 			return status
 		}
 	}
