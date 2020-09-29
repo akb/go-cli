@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -16,28 +17,34 @@ type Command interface {
 	// Help is called for a command if the command line fails to parse. It may
 	// also be manually called in the `Command` method if appropriate.
 	Help()
-
-	// Command is the method that actually performs the command.
-	Command(context.Context, []string) int
 }
 
+// Action is an interface for commands that do things other than display
+// information
+type Action interface {
+	// Command is the method that actually performs the command.
+	Command(context.Context, []string, System) int
+}
+
+// HasFlags is an interface for commands that use flags
 type HasFlags interface {
 	// Flags is called before `Command` and is passed a pointer to a flag.FlagSet
 	// where the Command may define flags to be automatically parsed
 	Flags(*flag.FlagSet)
 }
 
+// HasSubcommands is an interface for commands that have subcommands
 type HasSubcommands interface {
-	// Subcommands should return nil, or a pointer to a CLI if the command has
-	// subcommands
+	// Subcommands should return a CLI if the command has subcommands
 	Subcommands() CLI
 }
 
+// NoOpCommand is a command that does nothing.
 type NoOpCommand struct{}
 
 func (NoOpCommand) Help() {}
 
-func (NoOpCommand) Command(c context.Context, args []string) int {
+func (NoOpCommand) Command(c context.Context, args []string, s System) int {
 	return 0
 }
 
@@ -47,20 +54,56 @@ type CLI map[string]Command
 
 func (c CLI) ListSubcommands(prefix string) []string {
 	var subcommands []string
-	for k, v := range c {
+	for name, cmd := range c {
 		if len(prefix) > 0 {
-			k = fmt.Sprintf("%s %s", prefix, k)
+			name = fmt.Sprintf("%s %s", prefix, name)
 		}
 
-		subcommands = append(subcommands, k)
+		if _, ok := (interface{})(cmd).(Action); ok {
+			subcommands = append(subcommands, name)
+		}
 
-		if sc, ok := v.(HasSubcommands); ok {
-			for _, sck := range sc.Subcommands().ListSubcommands(k) {
-				subcommands = append(subcommands, sck)
+		if sc, ok := cmd.(HasSubcommands); ok {
+			for _, sck := range sc.Subcommands().ListSubcommands(name) {
+				if _, ok := (interface{})(cmd).(Action); ok {
+					subcommands = append(subcommands, sck)
+				}
 			}
 		}
 	}
 	return subcommands
+}
+
+// System is passed to commands as an argument when the command is run. It
+// provides an IO interface for the command to use that can be easily attached
+// to STDIN/STDOUT or to bytes.Buffer for testing
+type System struct {
+	In  io.Reader
+	Out io.Writer
+}
+
+func (s System) Print(a ...interface{}) (int, error) {
+	return fmt.Fprint(s.Out, a...)
+}
+
+func (s System) Printf(format string, a ...interface{}) (int, error) {
+	return fmt.Fprintf(s.Out, format, a...)
+}
+
+func (s System) Println(a ...interface{}) (int, error) {
+	return fmt.Fprintln(s.Out, a...)
+}
+
+func (s System) Scan(a ...interface{}) (int, error) {
+	return fmt.Fscan(s.In, a...)
+}
+
+func (s System) Scanf(format string, a ...interface{}) (int, error) {
+	return fmt.Fscanf(s.In, format, a...)
+}
+
+func (s System) Scanln(a ...interface{}) (int, error) {
+	return fmt.Fscanln(s.In, a...)
 }
 
 // Main should be called from a CLI application's `main` function. It should be
@@ -70,7 +113,7 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command) int {
+func Main(mainCmd Command, in io.Reader, out io.Writer) int {
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
@@ -119,14 +162,16 @@ func Main(mainCmd Command) int {
 		}
 	}
 
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, "origin", name)
-	stamp := time.Now().UnixNano()
-	traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
-	ctx = context.WithValue(ctx, "trace-id", traceID)
+	if b, ok := (interface{})(cmd).(Action); ok {
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, "origin", name)
+		stamp := time.Now().UnixNano()
+		traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
+		ctx = context.WithValue(ctx, "trace-id", traceID)
 
-	if status := cmd.Command(ctx, args); status != 0 {
-		return status
+		if status := b.Command(ctx, args, System{in, out}); status != 0 {
+			return status
+		}
 	}
 
 	return 0

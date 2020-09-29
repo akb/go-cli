@@ -28,7 +28,7 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context, args []string) int {
+func (c *testMainCommand) Command(ctx context.Context, args []string, s System) int {
 	c.commandDidRun = true
 	return 0
 }
@@ -42,21 +42,21 @@ type testSubcommand struct {
 	*testCommand
 }
 
-func (s *testSubcommand) Help() {
-	s.helpDidRun = true
+func (c *testSubcommand) Help() {
+	c.helpDidRun = true
 }
 
-func (s *testSubcommand) Flags(f *flag.FlagSet) {
-	s.flagsDidRun = true
+func (c *testSubcommand) Flags(f *flag.FlagSet) {
+	c.flagsDidRun = true
 }
 
-func (s *testSubcommand) Command(ctx context.Context, args []string) int {
-	s.commandDidRun = true
+func (c *testSubcommand) Command(ctx context.Context, args []string, s System) int {
+	c.commandDidRun = true
 	return 0
 }
 
-func (s *testSubcommand) Subcommands() CLI {
-	s.subcommandsDidRun = true
+func (c *testSubcommand) Subcommands() CLI {
+	c.subcommandsDidRun = true
 	return nil
 }
 
@@ -66,7 +66,7 @@ func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd)
+	result := Main(cmd, os.Stdin, os.Stdout)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -111,7 +111,7 @@ func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd)
+	result := Main(cmd, os.Stdin, os.Stdout)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
