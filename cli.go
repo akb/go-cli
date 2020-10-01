@@ -82,6 +82,7 @@ type System struct {
 	In     io.Reader
 	Out    io.Writer
 	Logger *log.Logger
+	Env    map[string]string
 }
 
 func (s System) Print(a ...interface{}) (int, error) {
@@ -126,6 +127,14 @@ func (s System) Fatalf(format string, v ...interface{}) {
 
 func (s System) Fatalln(v ...interface{}) {
 	s.Logger.Fatalln(v...)
+}
+
+func (s System) Getenv(key string) string {
+	if v, ok := s.Env[key]; ok {
+		return v
+	} else {
+		return ""
+	}
 }
 
 // Main should be called from a CLI application's `main` function. It should be
@@ -185,13 +194,19 @@ func Main(mainCmd Command, in io.Reader, out io.Writer, logger *log.Logger) int 
 	}
 
 	if b, ok := (interface{})(cmd).(Action); ok {
+		env := map[string]string{}
+		for _, e := range os.Environ() {
+			split := strings.Split(e, "=")
+			env[split[0]] = split[1]
+		}
+
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "origin", name)
 		stamp := time.Now().UnixNano()
 		traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 		ctx = context.WithValue(ctx, "trace-id", traceID)
 
-		if status := b.Command(ctx, args, System{in, out, logger}); status != 0 {
+		if status := b.Command(ctx, args, System{in, out, logger, env}); status != 0 {
 			return status
 		}
 	}
