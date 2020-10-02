@@ -29,7 +29,7 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context, args []string, s System) int {
+func (c *testMainCommand) Command(ctx context.Context, args []string, s *System) int {
 	c.commandDidRun = true
 	return 0
 }
@@ -51,7 +51,7 @@ func (c *testSubcommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testSubcommand) Command(ctx context.Context, args []string, s System) int {
+func (c *testSubcommand) Command(ctx context.Context, args []string, s *System) int {
 	c.commandDidRun = true
 	return 0
 }
@@ -67,7 +67,12 @@ func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd, os.Stdin, os.Stdout, log.New(os.Stderr, "", log.LstdFlags))
+	result := Main(cmd, &System{
+		In:          os.Stdin,
+		Out:         os.Stdout,
+		Logger:      log.New(os.Stderr, "", log.LstdFlags),
+		Environment: map[string]string{},
+	})
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -112,7 +117,12 @@ func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
-	result := Main(cmd, os.Stdin, os.Stdout, log.New(os.Stderr, "", log.LstdFlags))
+	result := Main(cmd, &System{
+		In:          os.Stdin,
+		Out:         os.Stdout,
+		Logger:      log.New(os.Stderr, "", log.LstdFlags),
+		Environment: map[string]string{},
+	})
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")

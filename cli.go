@@ -24,7 +24,7 @@ type Command interface {
 // information
 type Action interface {
 	// Command is the method that actually performs the command.
-	Command(context.Context, []string, System) int
+	Command(context.Context, []string, *System) int
 }
 
 // HasFlags is an interface for commands that use flags
@@ -45,7 +45,7 @@ type NoOpCommand struct{}
 
 func (NoOpCommand) Help() {}
 
-func (NoOpCommand) Command(c context.Context, args []string, s System) int {
+func (NoOpCommand) Command(c context.Context, args []string, s *System) int {
 	return 0
 }
 
@@ -79,10 +79,10 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // provides an IO interface for the command to use that can be easily attached
 // to STDIN/STDOUT or to bytes.Buffer for testing
 type System struct {
-	In     io.Reader
-	Out    io.Writer
-	Logger *log.Logger
-	Env    map[string]string
+	In          io.Reader
+	Out         io.Writer
+	Logger      *log.Logger
+	Environment map[string]string
 }
 
 func (s System) Print(a ...interface{}) (int, error) {
@@ -130,7 +130,7 @@ func (s System) Fatalln(v ...interface{}) {
 }
 
 func (s System) Getenv(key string) string {
-	if v, ok := s.Env[key]; ok {
+	if v, ok := s.Environment[key]; ok {
 		return v
 	} else {
 		return ""
@@ -144,7 +144,7 @@ func (s System) Getenv(key string) string {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command, in io.Reader, out io.Writer, logger *log.Logger) int {
+func Main(mainCmd Command, sys *System) int {
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
@@ -194,10 +194,12 @@ func Main(mainCmd Command, in io.Reader, out io.Writer, logger *log.Logger) int 
 	}
 
 	if b, ok := (interface{})(cmd).(Action); ok {
-		env := map[string]string{}
-		for _, e := range os.Environ() {
-			split := strings.Split(e, "=")
-			env[split[0]] = split[1]
+		if sys.Environment == nil {
+			sys.Environment = map[string]string{}
+			for _, e := range os.Environ() {
+				split := strings.Split(e, "=")
+				sys.Environment[split[0]] = split[1]
+			}
 		}
 
 		ctx := context.Background()
@@ -206,7 +208,7 @@ func Main(mainCmd Command, in io.Reader, out io.Writer, logger *log.Logger) int 
 		traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
 		ctx = context.WithValue(ctx, "trace-id", traceID)
 
-		if status := b.Command(ctx, args, System{in, out, logger, env}); status != 0 {
+		if status := b.Command(ctx, args, sys); status != 0 {
 			return status
 		}
 	}
