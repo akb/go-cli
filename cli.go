@@ -82,8 +82,9 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // which should be returned to the underlying OS
 func Main(mainCmd Command, sys *System) int {
 	if sys.Environment == nil {
-		sys.Environment = map[string]string{}
-		for _, e := range os.Environ() {
+		env := os.Environ()
+		sys.Environment = make(map[string]string, len(env))
+		for _, e := range env {
 			split := strings.Split(e, "=")
 			sys.Environment[split[0]] = split[1]
 		}
@@ -98,20 +99,19 @@ func Main(mainCmd Command, sys *System) int {
 	var head, name string
 	var tail []string = sys.Arguments
 	for {
-		head = tail[0]
-
 		var subcommands CLI
 		if b, ok := (interface{})(cmd).(HasSubcommands); ok {
 			subcommands = b.Subcommands()
 		}
 
+		head = tail[0]
 		if head[0] == '-' {
 			flags = append(flags, head)
 		} else if subcommands == nil {
 			args = append(args, head)
 		} else {
-			if c, ok := subcommands[head]; ok {
-				cmd = c
+			if subcommand, ok := subcommands[head]; ok {
+				cmd = subcommand
 
 				if len(name) == 0 {
 					name = head
@@ -125,10 +125,9 @@ func Main(mainCmd Command, sys *System) int {
 
 		if len(tail) == 1 {
 			break
-		} else {
-			tail = tail[1:]
-			continue
 		}
+
+		tail = tail[1:]
 	}
 
 	if b, ok := (interface{})(cmd).(HasFlags); ok {
