@@ -5,8 +5,6 @@ import (
 	"crypto/sha256"
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -75,68 +73,6 @@ func (c CLI) ListSubcommands(prefix string) []string {
 	return subcommands
 }
 
-// System is passed to commands as an argument when the command is run. It
-// provides an IO interface for the command to use that can be easily attached
-// to STDIN/STDOUT or to bytes.Buffer for testing
-type System struct {
-	In          io.Reader
-	Out         io.Writer
-	Logger      *log.Logger
-	Environment map[string]string
-}
-
-func (s System) Print(a ...interface{}) (int, error) {
-	return fmt.Fprint(s.Out, a...)
-}
-
-func (s System) Printf(format string, a ...interface{}) (int, error) {
-	return fmt.Fprintf(s.Out, format, a...)
-}
-
-func (s System) Println(a ...interface{}) (int, error) {
-	return fmt.Fprintln(s.Out, a...)
-}
-
-func (s System) Scan(a ...interface{}) (int, error) {
-	return fmt.Fscan(s.In, a...)
-}
-
-func (s System) Scanf(format string, a ...interface{}) (int, error) {
-	return fmt.Fscanf(s.In, format, a...)
-}
-
-func (s System) Scanln(a ...interface{}) (int, error) {
-	return fmt.Fscanln(s.In, a...)
-}
-
-func (s System) Log(a ...interface{}) {
-	s.Logger.Println(a...)
-}
-
-func (s System) Logf(format string, a ...interface{}) {
-	s.Logger.Printf(format, a...)
-}
-
-func (s System) Fatal(v ...interface{}) {
-	s.Logger.Fatal(v...)
-}
-
-func (s System) Fatalf(format string, v ...interface{}) {
-	s.Logger.Fatalf(format, v...)
-}
-
-func (s System) Fatalln(v ...interface{}) {
-	s.Logger.Fatalln(v...)
-}
-
-func (s System) Getenv(key string) string {
-	if v, ok := s.Environment[key]; ok {
-		return v
-	} else {
-		return ""
-	}
-}
-
 // Main should be called from a CLI application's `main` function. It should be
 // passed the Command that represents the root of the subcommand tree. Main
 // will parse the command line, determine which subcommand is the intended
@@ -145,10 +81,22 @@ func (s System) Getenv(key string) string {
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
 func Main(mainCmd Command, sys *System) int {
+	if sys.Environment == nil {
+		sys.Environment = map[string]string{}
+		for _, e := range os.Environ() {
+			split := strings.Split(e, "=")
+			sys.Environment[split[0]] = split[1]
+		}
+	}
+
+	if sys.Arguments == nil {
+		sys.Arguments = os.Args
+	}
+
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
-	var tail []string = os.Args
+	var tail []string = sys.Arguments
 	for {
 		head = tail[0]
 
@@ -170,7 +118,7 @@ func Main(mainCmd Command, sys *System) int {
 				} else {
 					name = strings.Join([]string{name, head}, " ")
 				}
-			} else if head != os.Args[0] {
+			} else if head != sys.Arguments[0] {
 				args = append(args, head)
 			}
 		}
@@ -188,20 +136,12 @@ func Main(mainCmd Command, sys *System) int {
 		f.Usage = cmd.Help
 		b.Flags(f)
 		if err := f.Parse(flags); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to parse command-line arguments:\n%s\n", err)
+			sys.Logf("Failed to parse command-line arguments:\n%s\n", err)
 			return 1
 		}
 	}
 
 	if b, ok := (interface{})(cmd).(Action); ok {
-		if sys.Environment == nil {
-			sys.Environment = map[string]string{}
-			for _, e := range os.Environ() {
-				split := strings.Split(e, "=")
-				sys.Environment[split[0]] = split[1]
-			}
-		}
-
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "origin", name)
 		stamp := time.Now().UnixNano()

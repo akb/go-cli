@@ -62,8 +62,6 @@ func (c *testSubcommand) Subcommands() CLI {
 }
 
 func TestMainCommand(t *testing.T) {
-	os.Args = []string{"testmain"}
-
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
@@ -71,6 +69,7 @@ func TestMainCommand(t *testing.T) {
 		In:          os.Stdin,
 		Out:         os.Stdout,
 		Logger:      log.New(os.Stderr, "", log.LstdFlags),
+		Arguments:   []string{"testmain"},
 		Environment: map[string]string{},
 	})
 
@@ -112,8 +111,6 @@ func TestMainCommand(t *testing.T) {
 }
 
 func TestSubcommand(t *testing.T) {
-	os.Args = []string{"testmain", "testsub"}
-
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
 
@@ -121,6 +118,7 @@ func TestSubcommand(t *testing.T) {
 		In:          os.Stdin,
 		Out:         os.Stdout,
 		Logger:      log.New(os.Stderr, "", log.LstdFlags),
+		Arguments:   []string{"testmain", "testsub"},
 		Environment: map[string]string{},
 	})
 
