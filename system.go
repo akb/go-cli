@@ -60,11 +60,3 @@ func (s System) Fatalf(format string, v ...interface{}) {
 func (s System) Fatalln(v ...interface{}) {
 	s.Logger.Fatalln(v...)
 }
-
-func (s System) Getenv(key string) string {
-	if v, ok := s.Environment[key]; ok {
-		return v
-	} else {
-		return ""
-	}
-}
