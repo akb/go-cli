@@ -143,9 +143,7 @@ func Main(mainCmd Command, sys *System) int {
 	if b, ok := (interface{})(cmd).(Action); ok {
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, "origin", name)
-		stamp := time.Now().UnixNano()
-		traceID := fmt.Sprintf("%x", sha256.Sum256([]byte(string(stamp))))[:45]
-		ctx = context.WithValue(ctx, "trace-id", traceID)
+		ctx = context.WithValue(ctx, "trace-id", traceID())
 
 		if status := b.Command(ctx, args, sys); status != 0 {
 			return status
@@ -153,4 +151,9 @@ func Main(mainCmd Command, sys *System) int {
 	}
 
 	return 0
+}
+
+func traceID() string {
+	stamp := []byte(string(time.Now().UnixNano()))
+	return fmt.Sprintf("%x", sha256.Sum256(stamp))[:45]
 }
