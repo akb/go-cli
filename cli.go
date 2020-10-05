@@ -22,7 +22,7 @@ type Command interface {
 // information
 type Action interface {
 	// Command is the method that actually performs the command.
-	Command(context.Context, []string, *System) int
+	Command(context.Context, []string, *System)
 }
 
 // HasFlags is an interface for commands that use flags
@@ -43,8 +43,7 @@ type NoOpCommand struct{}
 
 func (NoOpCommand) Help() {}
 
-func (NoOpCommand) Command(c context.Context, args []string, s *System) int {
-	return 0
+func (NoOpCommand) Command(c context.Context, args []string, s *System) {
 }
 
 // CLI is a map of names to Command implementations. It is used to represent a
@@ -80,7 +79,7 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command, sys *System) int {
+func Main(mainCmd Command, sys *System) (status int) {
 	if sys.Environment == nil {
 		env := os.Environ()
 		sys.Environment = make(map[string]string, len(env))
@@ -145,9 +144,20 @@ func Main(mainCmd Command, sys *System) int {
 		ctx = context.WithValue(ctx, "origin", name)
 		ctx = context.WithValue(ctx, "trace-id", traceID())
 
-		if status := b.Command(ctx, args, sys); status != 0 {
-			return status
-		}
+		defer func() {
+			err := recover()
+			if err == nil {
+				return
+			}
+
+			if e, ok := err.(ExitStatus); ok {
+				status = int(e)
+			} else {
+				panic(err)
+			}
+		}()
+
+		b.Command(ctx, args, sys)
 	}
 
 	return 0

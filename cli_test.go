@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"log"
 	"os"
+	"regexp"
 	"testing"
 )
 
@@ -29,9 +31,8 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context, args []string, s *System) int {
+func (c *testMainCommand) Command(ctx context.Context, args []string, s *System) {
 	c.commandDidRun = true
-	return 0
 }
 
 func (c *testMainCommand) Subcommands() CLI {
@@ -51,9 +52,8 @@ func (c *testSubcommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testSubcommand) Command(ctx context.Context, args []string, s *System) int {
+func (c *testSubcommand) Command(ctx context.Context, args []string, s *System) {
 	c.commandDidRun = true
-	return 0
 }
 
 func (c *testSubcommand) Subcommands() CLI {
@@ -156,5 +156,41 @@ func TestSubcommand(t *testing.T) {
 
 	if subc.subcommandsDidRun {
 		t.Errorf("subc.Subcommands method ran but should not have\n")
+	}
+}
+
+type testFatalCmd struct {
+	msg string
+}
+
+func (testFatalCmd) Help() {}
+
+func (testFatalCmd) Command(c context.Context, args []string, s *System) {
+	s.Fatalln("FUBRRRR")
+}
+
+func TestFatal(t *testing.T) {
+	cmd := &testFatalCmd{}
+
+	var stderr bytes.Buffer
+	status := Main(cmd, &System{
+		In:          os.Stdin,
+		Out:         os.Stdout,
+		Logger:      log.New(&stderr, "", log.LstdFlags),
+		Arguments:   []string{"testmain"},
+		Environment: map[string]string{},
+	})
+
+	if status != 1 {
+		t.Errorf("Expected command to return status 1, instead received %d.\n", status)
+	}
+
+	matched, err := regexp.MatchReader("FUBRRRR", &stderr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !matched {
+		t.Errorf("Expected command to write FUBRRRR to log")
 	}
 }

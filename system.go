@@ -17,6 +17,8 @@ type System struct {
 	Arguments   []string
 }
 
+type ExitStatus int
+
 func (s System) Print(a ...interface{}) (int, error) {
 	return fmt.Fprint(s.Out, a...)
 }
@@ -50,13 +52,20 @@ func (s System) Logf(format string, a ...interface{}) {
 }
 
 func (s System) Fatal(v ...interface{}) {
-	s.Logger.Fatal(v...)
+	s.Logger.Print(v...)
+	panic(ExitStatus(1))
 }
 
 func (s System) Fatalf(format string, v ...interface{}) {
-	s.Logger.Fatalf(format, v...)
+	s.Logger.Printf(format, v...)
+	panic(ExitStatus(1))
 }
 
 func (s System) Fatalln(v ...interface{}) {
-	s.Logger.Fatalln(v...)
+	s.Logger.Println(v...)
+	panic(ExitStatus(1))
+}
+
+func (s System) Exit(code int) {
+	panic(ExitStatus(code))
 }
