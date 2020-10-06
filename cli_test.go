@@ -1,12 +1,8 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"flag"
-	"log"
-	"os"
-	"regexp"
 	"testing"
 )
 
@@ -31,7 +27,7 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context, args []string, s *System) {
+func (c *testMainCommand) Command(ctx context.Context, args []string, s System) {
 	c.commandDidRun = true
 }
 
@@ -52,7 +48,7 @@ func (c *testSubcommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testSubcommand) Command(ctx context.Context, args []string, s *System) {
+func (c *testSubcommand) Command(ctx context.Context, args []string, s System) {
 	c.commandDidRun = true
 }
 
@@ -64,14 +60,8 @@ func (c *testSubcommand) Subcommands() CLI {
 func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
-
-	result := Main(cmd, &System{
-		In:          os.Stdin,
-		Out:         os.Stdout,
-		Logger:      log.New(os.Stderr, "", log.LstdFlags),
-		Arguments:   []string{"testmain"},
-		Environment: map[string]string{},
-	})
+	system := NewTestSystem(t, []string{"testmain"}, nil)
+	result := Main(cmd, system)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -113,14 +103,8 @@ func TestMainCommand(t *testing.T) {
 func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
-
-	result := Main(cmd, &System{
-		In:          os.Stdin,
-		Out:         os.Stdout,
-		Logger:      log.New(os.Stderr, "", log.LstdFlags),
-		Arguments:   []string{"testmain", "testsub"},
-		Environment: map[string]string{},
-	})
+	system := NewTestSystem(t, []string{"testmain", "testsub"}, nil)
+	result := Main(cmd, system)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -165,32 +149,23 @@ type testFatalCmd struct {
 
 func (testFatalCmd) Help() {}
 
-func (testFatalCmd) Command(c context.Context, args []string, s *System) {
+func (testFatalCmd) Command(c context.Context, args []string, s System) {
 	s.Fatalln("FUBRRRR")
 }
 
 func TestFatal(t *testing.T) {
 	cmd := &testFatalCmd{}
 
-	var stderr bytes.Buffer
-	status := Main(cmd, &System{
-		In:          os.Stdin,
-		Out:         os.Stdout,
-		Logger:      log.New(&stderr, "", log.LstdFlags),
-		Arguments:   []string{"testmain"},
-		Environment: map[string]string{},
-	})
+	system := NewTestSystem(t, []string{"testmain"}, nil)
+	status := Main(cmd, system)
 
 	if status != 1 {
 		t.Errorf("Expected command to return status 1, instead received %d.\n", status)
 	}
 
-	matched, err := regexp.MatchReader("FUBRRRR", &stderr)
+	received, err := system.Console.ExpectString("FUBRRRR")
 	if err != nil {
-		t.Error(err)
-	}
-
-	if !matched {
-		t.Errorf("Expected command to write FUBRRRR to log")
+		t.Errorf("Error while expecting string: %s\n", err.Error())
+		t.Logf("Received: \"%s\"\n", received)
 	}
 }

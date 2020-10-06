@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
@@ -22,7 +21,7 @@ type Command interface {
 // information
 type Action interface {
 	// Command is the method that actually performs the command.
-	Command(context.Context, []string, *System)
+	Command(context.Context, []string, System)
 }
 
 // HasFlags is an interface for commands that use flags
@@ -79,24 +78,11 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command, sys *System) (status int) {
-	if sys.Environment == nil {
-		env := os.Environ()
-		sys.Environment = make(map[string]string, len(env))
-		for _, e := range env {
-			split := strings.Split(e, "=")
-			sys.Environment[split[0]] = split[1]
-		}
-	}
-
-	if sys.Arguments == nil {
-		sys.Arguments = os.Args
-	}
-
+func Main(mainCmd Command, sys System) (status int) {
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
-	var tail []string = sys.Arguments
+	var tail []string = sys.Args()
 	for {
 		var subcommands CLI
 		if b, ok := (interface{})(cmd).(HasSubcommands); ok {
@@ -117,7 +103,7 @@ func Main(mainCmd Command, sys *System) (status int) {
 				} else {
 					name = strings.Join([]string{name, head}, " ")
 				}
-			} else if head != sys.Arguments[0] {
+			} else if head != sys.Args()[0] {
 				args = append(args, head)
 			}
 		}
