@@ -2,13 +2,13 @@ package cli
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"testing"
 	"time"
 
 	"github.com/Netflix/go-expect"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type TestSystem struct {
@@ -43,12 +43,11 @@ func NewTestSystem(t *testing.T, arguments []string, environment map[string]stri
 }
 
 func (ts *TestSystem) ScanSilent() (string, error) {
-	var out string
-	_, err := fmt.Fscan(ts.In, &out)
+	cloaked, err := terminal.ReadPassword(int(ts.Console.Tty().Fd()))
 	if err != nil {
-		return "", err
+		return "", nil
 	}
-	return out, nil
+	return string(cloaked), nil
 }
 
 func (ts *TestSystem) Close() {
