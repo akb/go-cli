@@ -35,7 +35,7 @@ type System interface {
 
 	Exit(int)
 
-	ScanSilent() (string, error)
+	ReadPassword() (string, error)
 }
 
 type BaseSystem struct {
@@ -147,7 +147,7 @@ func NewUnixSystem() *UnixSystem {
 	}}
 }
 
-func (s *UnixSystem) ScanSilent() (string, error) {
+func (s *UnixSystem) ReadPassword() (string, error) {
 	cloaked, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", nil
