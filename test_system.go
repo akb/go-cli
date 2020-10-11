@@ -16,15 +16,18 @@ type TestSystem struct {
 }
 
 type TestOutput struct {
-	*bytes.Buffer
+	STDOUT *bytes.Buffer
+	STDERR *bytes.Buffer
 }
 
-func NewTestSystem(t *testing.T, arguments []string, environment map[string]string) *TestSystem {
-	stdout := TestOutput{&bytes.Buffer{}}
-	stderr := TestOutput{&bytes.Buffer{}}
+func NewTestSystem(
+	t *testing.T, arguments []string, environment map[string]string,
+) (*TestSystem, *TestOutput) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 
-	console, err := expect.NewConsole(
-		expect.WithDefaultTimeout(1*time.Second),
+	console, err := expect.NewTestConsole(t,
+		expect.WithDefaultTimeout(5*time.Second),
 		expect.WithStdout(stdout),
 	)
 	if err != nil {
@@ -35,18 +38,16 @@ func NewTestSystem(t *testing.T, arguments []string, environment map[string]stri
 		environment = map[string]string{}
 	}
 
-	tty := console.Tty()
-
 	return &TestSystem{
 		BaseSystem: &BaseSystem{
-			In:          tty,
-			Out:         tty,
+			In:          console.Tty(),
+			Out:         console.Tty(),
 			Logger:      log.New(stderr, "", log.LstdFlags),
 			Environment: environment,
 			Arguments:   arguments,
 		},
 		Console: console,
-	}
+	}, &TestOutput{stdout, stderr}
 }
 
 func (ts *TestSystem) ReadPassword() (string, error) {
