@@ -78,7 +78,7 @@ func (c CLI) ListSubcommands(prefix string) []string {
 // subcommand is found, or if flag parsing fails, it will call the Help method
 // from the most-recently visited subcommand. Main returns the Unix status code
 // which should be returned to the underlying OS
-func Main(mainCmd Command, sys System) (status int) {
+func Main(ctx context.Context, mainCmd Command, sys System) (status int) {
 	var cmd Command = mainCmd
 	var args, flags []string
 	var head, name string
@@ -126,7 +126,6 @@ func Main(mainCmd Command, sys System) (status int) {
 	}
 
 	if b, ok := (interface{})(cmd).(Action); ok {
-		ctx := context.Background()
 		ctx = context.WithValue(ctx, "origin", name)
 		ctx = context.WithValue(ctx, "trace-id", traceID())
 
