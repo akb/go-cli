@@ -60,8 +60,8 @@ func (c *testSubcommand) Subcommands() CLI {
 func TestMainCommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
-	system := NewTestSystem(t, []string{"testmain"}, nil)
-	result := Main(cmd, system)
+	system, _ := NewTestSystem(t, []string{"testmain"}, nil)
+	result := Main(context.Background(), cmd, system)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -103,8 +103,8 @@ func TestMainCommand(t *testing.T) {
 func TestSubcommand(t *testing.T) {
 	subc := &testSubcommand{&testCommand{}}
 	cmd := &testMainCommand{&testCommand{}, subc}
-	system := NewTestSystem(t, []string{"testmain", "testsub"}, nil)
-	result := Main(cmd, system)
+	system, _ := NewTestSystem(t, []string{"testmain", "testsub"}, nil)
+	result := Main(context.Background(), cmd, system)
 
 	if result != 0 {
 		t.Errorf("command did not return a 0 status\n")
@@ -156,8 +156,8 @@ func (testFatalCmd) Command(c context.Context, args []string, s System) {
 func TestFatal(t *testing.T) {
 	cmd := &testFatalCmd{}
 
-	system := NewTestSystem(t, []string{"testmain"}, nil)
-	status := Main(cmd, system)
+	system, _ := NewTestSystem(t, []string{"testmain"}, nil)
+	status := Main(context.Background(), cmd, system)
 
 	if status != 1 {
 		t.Errorf("Expected command to return status 1, instead received %d.\n", status)
