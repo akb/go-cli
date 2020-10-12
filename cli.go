@@ -130,15 +130,12 @@ func Main(ctx context.Context, mainCmd Command, sys System) (status int) {
 		ctx = context.WithValue(ctx, "trace-id", traceID())
 
 		defer func() {
-			err := recover()
-			if err == nil {
-				return
-			}
-
-			if e, ok := err.(ExitStatus); ok {
-				status = int(e)
-			} else {
-				panic(err)
+			if err := recover(); err != nil {
+				if e, ok := err.(ExitStatus); ok {
+					status = int(e)
+				} else {
+					panic(err)
+				}
 			}
 		}()
 
