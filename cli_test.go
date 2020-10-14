@@ -27,8 +27,9 @@ func (c *testMainCommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testMainCommand) Command(ctx context.Context, args []string, s System) {
+func (c *testMainCommand) Command(ctx context.Context, args []string, s System) error {
 	c.commandDidRun = true
+	return nil
 }
 
 func (c *testMainCommand) Subcommands() CLI {
@@ -48,8 +49,9 @@ func (c *testSubcommand) Flags(f *flag.FlagSet) {
 	c.flagsDidRun = true
 }
 
-func (c *testSubcommand) Command(ctx context.Context, args []string, s System) {
+func (c *testSubcommand) Command(ctx context.Context, args []string, s System) error {
 	c.commandDidRun = true
+	return nil
 }
 
 func (c *testSubcommand) Subcommands() CLI {
@@ -140,32 +142,5 @@ func TestSubcommand(t *testing.T) {
 
 	if subc.subcommandsDidRun {
 		t.Errorf("subc.Subcommands method ran but should not have\n")
-	}
-}
-
-type testFatalCmd struct {
-	msg string
-}
-
-func (testFatalCmd) Help() {}
-
-func (testFatalCmd) Command(c context.Context, args []string, s System) {
-	s.Fatalln("FUBRRRR")
-}
-
-func TestFatal(t *testing.T) {
-	cmd := &testFatalCmd{}
-
-	system, _ := NewTestSystem(t, []string{"testmain"}, nil)
-	status := Main(context.Background(), cmd, system)
-
-	if status != 1 {
-		t.Errorf("Expected command to return status 1, instead received %d.\n", status)
-	}
-
-	received, err := system.Console.ExpectString("FUBRRRR")
-	if err != nil {
-		t.Errorf("Error while expecting string: %s\n", err.Error())
-		t.Logf("Received: \"%s\"\n", received)
 	}
 }
