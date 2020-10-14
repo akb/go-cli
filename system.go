@@ -29,11 +29,6 @@ type System interface {
 
 	Log(...interface{})
 	Logf(string, ...interface{})
-	Fatal(...interface{})
-	Fatalf(string, ...interface{})
-	Fatalln(...interface{})
-
-	Exit(int)
 
 	ReadPassword() (string, error)
 }
@@ -45,8 +40,6 @@ type BaseSystem struct {
 	Environment map[string]string
 	Arguments   []string
 }
-
-type ExitStatus int
 
 func (s *BaseSystem) Environ() []string {
 	environ := make([]string, len(s.Environment))
@@ -103,25 +96,6 @@ func (s *BaseSystem) Log(a ...interface{}) {
 
 func (s *BaseSystem) Logf(format string, a ...interface{}) {
 	s.Logger.Printf(format, a...)
-}
-
-func (s *BaseSystem) Fatal(v ...interface{}) {
-	s.Logger.Print(v...)
-	panic(ExitStatus(1))
-}
-
-func (s *BaseSystem) Fatalf(format string, v ...interface{}) {
-	s.Logger.Printf(format, v...)
-	panic(ExitStatus(1))
-}
-
-func (s *BaseSystem) Fatalln(v ...interface{}) {
-	s.Logger.Println(v...)
-	panic(ExitStatus(1))
-}
-
-func (s *BaseSystem) Exit(code int) {
-	panic(ExitStatus(code))
 }
 
 type UnixSystem struct {

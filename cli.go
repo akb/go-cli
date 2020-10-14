@@ -7,7 +7,18 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
+
+type ExitError struct {
+	Status  int
+	Message string
+}
+
+func (e *ExitError) Error() string {
+	return e.Message
+}
 
 // Command is an interface used to represent a CLI component. Both primary
 // commands and subcommands implement Command
@@ -21,7 +32,7 @@ type Command interface {
 // information
 type Action interface {
 	// Command is the method that actually performs the command.
-	Command(context.Context, []string, System)
+	Command(context.Context, []string, System) error
 }
 
 // HasFlags is an interface for commands that use flags
@@ -42,7 +53,8 @@ type NoOpCommand struct{}
 
 func (NoOpCommand) Help() {}
 
-func (NoOpCommand) Command(c context.Context, args []string, s *System) {
+func (NoOpCommand) Command(c context.Context, args []string, s *System) error {
+	return nil
 }
 
 // CLI is a map of names to Command implementations. It is used to represent a
@@ -128,18 +140,15 @@ func Main(ctx context.Context, mainCmd Command, sys System) (status int) {
 	if b, ok := (interface{})(cmd).(Action); ok {
 		ctx = context.WithValue(ctx, "origin", name)
 		ctx = context.WithValue(ctx, "trace-id", traceID())
-
-		defer func() {
-			if err := recover(); err != nil {
-				if e, ok := err.(ExitStatus); ok {
-					status = int(e)
-				} else {
-					panic(err)
-				}
+		if err := b.Command(ctx, args, sys); err != nil {
+			sys.Log(err.Error())
+			switch err := errors.Cause(err).(type) {
+			case *ExitError:
+				return err.Status
+			default:
+				return 1
 			}
-		}()
-
-		b.Command(ctx, args, sys)
+		}
 	}
 
 	return 0
