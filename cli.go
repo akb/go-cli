@@ -11,11 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ExitError can be used to expecify an exit status when returning from Command
 type ExitError struct {
 	Status  int
 	Message string
 }
 
+// Error returns a string representation of the ExitError
 func (e *ExitError) Error() string {
 	return e.Message
 }
@@ -53,6 +55,7 @@ type NoOpCommand struct{}
 
 func (NoOpCommand) Help() {}
 
+// Command performs no operation and returns successfully
 func (NoOpCommand) Command(c context.Context, args []string, s *System) error {
 	return nil
 }
@@ -61,6 +64,7 @@ func (NoOpCommand) Command(c context.Context, args []string, s *System) error {
 // set of subcommands for a given Command
 type CLI map[string]Command
 
+// ListSubcommands returns a slice of names of the subcommands within a CLI
 func (c CLI) ListSubcommands(prefix string) []string {
 	var subcommands []string
 	for name, cmd := range c {
